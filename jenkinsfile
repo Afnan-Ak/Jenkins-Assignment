@@ -1,0 +1,48 @@
+stages {
+
+    stage('Checkout Code') {
+        steps {
+            git branch: 'main',
+                url: 'https://github.com/Afnan-Ak/Jenkins-Assignment.git'
+        }
+    }
+
+    stage('Build') {
+        steps {
+            sh 'mvn clean package'
+        }
+    }
+
+    stage('Run Tests') {
+        steps {
+            sh 'mvn test'
+        }
+        post {
+            always {
+                junit 'target/surefire-reports/*.xml'
+            }
+        }
+    }
+
+    stage('Deploy to Server') {
+        when {
+            expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+        }
+        steps {
+            sh '''
+            echo "Deploying build to remote server..."
+            scp -o StrictHostKeyChecking=no target/myapp.jar ubuntu@13.233.39.148:/opt/app/
+            ssh -o StrictHostKeyChecking=no ubuntu@13.233.39.148 "sudo systemctl restart myapp"
+            '''
+        }
+    }
+}
+
+post {
+    success {
+        echo 'Build and Deployment Successful!'
+    }
+    failure {
+        echo 'Build Failed. Check logs.'
+    }
+}
